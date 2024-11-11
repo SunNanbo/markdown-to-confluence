@@ -113,9 +113,6 @@ def create_confluence_page(base_url, username, password, space_key, title, conte
     auth = HTTPBasicAuth(username, password)
     api_endpoint = f"{base_url}/rest/api/content"
 
-    auth = HTTPBasicAuth(username, password)
-    api_endpoint = f"{base_url}/rest/api/content"
-
     page_data = {
         "type": "page",
         "title": title,
