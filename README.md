@@ -29,14 +29,19 @@ This script converts Markdown files to Confluence pages and uploads them to a sp
     pip install -r requirements.txt
     ```
 
-3. Create a `.env` file in the root directory of the project and add the following environment variables:
+3. Create a `.env` file in the root directory of the project and modify the following environment variables. When `CONFLUENCE_TOKEN` is given, `CONFLUENCE_USERNAME` and `CONFLUENCE_PASSWORD` are ignored.
     ```env
     BASE_URL=http://localhost:8090
     CONFLUENCE_USERNAME=your_username
     CONFLUENCE_PASSWORD=your_password
+    CONFLUENCE_TOKEN=your_personal_access_token
     SPACE_KEY=NAMEOFSPACE
     BASE_DIR=/abssolute/path/to/your/wiki/content
     IMAGE_DIR=relative/from/base_dir/to/image/dir
+    ```
+    An example is given with `.env.example`. You can copy it and start from there:
+    ```sh
+    cp .env.example .env
     ```
 
 4. Ensure your Confluence instance is running and accessible at the `BASE_URL` specified in the `.env` file.
