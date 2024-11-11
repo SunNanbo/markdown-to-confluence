@@ -27,7 +27,7 @@ def convert_markdown_to_confluence(markdown_content, base_url, space_key):
     # Convert image links and store them in images_to_upload
     content = re.sub(r'!\[\[([^\]]+)\]\]', lambda m: images_to_upload.append(m.group(1)) or f'!{m.group(1)}!', markdown_content)
     content = re.sub(r'!\[\[([^\]]+)\]\]', lambda m: f'!{m.group(1)}!', markdown_content)
-    
+
     content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', lambda m: f'!{m.group(2)}|alt={m.group(1)}!', content)
 
     def process_page_name(page_name):
@@ -37,13 +37,13 @@ def convert_markdown_to_confluence(markdown_content, base_url, space_key):
     content = re.sub(r'\[\[(.*?)\|(.*?)\]\]', lambda m: f'[{m.group(2)}|{base_url}/display/{space_key}/{process_page_name(m.group(1))}]', content)
     # Convert [[Page Name]] to [Page Name]
     content = re.sub(r'\[\[(.*?)\]\]', lambda m: f'[{m.group(1)}|{base_url}/display/{space_key}/{process_page_name(m.group(1))}]', content)
-    
-    
+
+
     # Convert tags to labels
     labels = re.findall(r'#(\S+)', content)
     content = re.sub(r'#(\S+)', '', content)
     content = re.sub(r'^\d+\.\s', '# ', content, flags=re.MULTILINE)
-    
+
     # Convert headings
     content = re.sub(r'^(#{7,})\s*(.*)', r'\2', content, flags=re.MULTILINE)
     content = re.sub(r'^(#{6})\s*(.*)', r'h6. \2', content, flags=re.MULTILINE)
@@ -53,34 +53,34 @@ def convert_markdown_to_confluence(markdown_content, base_url, space_key):
     content = re.sub(r'^(#{2})\s*(.*)', r'h2. \2', content, flags=re.MULTILINE)
     content = re.sub(r'^(#{1})\s*(.*)', r'h1. \2', content, flags=re.MULTILINE)
 
-    
+
     # Convert links (but not image links)
     content = re.sub(r'\[([^\]!]+)\]\(([^)]+)\)', r'[\1|\2]', content)
-    
+
     # Convert image links
     content = re.sub(r'!\[\[([^\]]+)\]\]', lambda m: f'!{m.group(1)}!', content)
-    
+
     content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', lambda m: f'!{m.group(2)}|alt={m.group(1)}!', content)
-    
+
     return content, images_to_upload, labels
 
 def upload_image(base_url, auth, space_key, page_id, image_path):
     api_endpoint = f"{base_url}/rest/api/content/{page_id}/child/attachment"
-    
+
     image_filename = os.path.basename(image_path)
     mime_type, _ = mimetypes.guess_type(image_path)
-    
+
     # Check if the image already exists
     existing_attachments = requests.get(api_endpoint, auth=auth).json()
     for attachment in existing_attachments.get('results', []):
         if attachment['title'] == image_filename:
             print(f"Image {image_filename} already exists. Skipping upload.")
             return True
-    
+
     with open(image_path, 'rb') as file:
         files = {'file': (image_filename, file, mime_type)}
         data = {'minorEdit': 'true'}
-        
+
         response = requests.post(
             api_endpoint,
             auth=auth,
@@ -88,7 +88,7 @@ def upload_image(base_url, auth, space_key, page_id, image_path):
             data=data,
             headers={'X-Atlassian-Token': 'no-check'}
         )
-        
+
     if response.status_code == 200:
         print(f"Successfully uploaded {image_filename}")
         return True
@@ -255,4 +255,3 @@ if __name__ == "__main__":
             create_confluence_page(base_url, username, password, space_key, title, confluence_content, image_dir, images_to_upload, labels, parent_id)
         else:
             create_confluence_page(base_url, username, password, space_key, title, confluence_content, image_dir, images_to_upload, labels)
-
