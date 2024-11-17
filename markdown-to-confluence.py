@@ -1,3 +1,4 @@
+import fire
 import requests
 import json
 import re
@@ -38,12 +39,6 @@ def convert_markdown_to_confluence(markdown_content, base_url, space_key):
     # Convert [[Page Name]] to [Page Name]
     content = re.sub(r'\[\[(.*?)\]\]', lambda m: f'[{m.group(1)}|{base_url}/display/{space_key}/{process_page_name(m.group(1))}]', content)
 
-
-    # Convert tags to labels
-    labels = re.findall(r'#(\S+)', content)
-    content = re.sub(r'#(\S+)', '', content)
-    content = re.sub(r'^\d+\.\s', '# ', content, flags=re.MULTILINE)
-
     # Convert headings
     content = re.sub(r'^(#{7,})\s*(.*)', r'\2', content, flags=re.MULTILINE)
     content = re.sub(r'^(#{6})\s*(.*)', r'h6. \2', content, flags=re.MULTILINE)
@@ -53,6 +48,10 @@ def convert_markdown_to_confluence(markdown_content, base_url, space_key):
     content = re.sub(r'^(#{2})\s*(.*)', r'h2. \2', content, flags=re.MULTILINE)
     content = re.sub(r'^(#{1})\s*(.*)', r'h1. \2', content, flags=re.MULTILINE)
 
+    # Convert tags to labels
+    labels = re.findall(r'#(\S+)', content)
+    content = re.sub(r'#(\S+)', '', content)
+    content = re.sub(r'^\d+\.\s', '# ', content, flags=re.MULTILINE)
 
     # Convert links (but not image links)
     content = re.sub(r'\[([^\]!]+)\]\(([^)]+)\)', r'[\1|\2]', content)
@@ -252,19 +251,36 @@ def create_confluence_page(base_url, auth, space_key, title, content, image_dir,
     except Exception as err:
         print(f"An unexpected error occurred: {err}")
 
-if __name__ == "__main__":
-    import sys
+def main(space_key, root_page_id, base_dir=None, image_dir="img", markdown_file=None):
+    """
+    Main function to process markdown files and upload them to Confluence.
+    Args:
+        space_key (str): The Confluence space key where pages will be created.
+        root_page_id (str): The ID of the root page under which new pages will be created.
+        base_dir (str): The base directory to search for markdown files.
+        image_dir (str): The directory where images are stored. Relative path.
+        markdown_file (str, optional): Specific markdown file to process. If not provided, all markdown files in base_dir will be processed.
+    Environment Variables:
+        BASE_URL (str): The base URL of the Confluence instance.
+        CONFLUENCE_USERNAME (str): The username for Confluence authentication.
+        CONFLUENCE_PASSWORD (str): The password for Confluence authentication.
+        CONFLUENCE_TOKEN (str): The token for Confluence authentication.
+    Returns:
+        None
+    """
 
     # Confluence details
     base_url = os.getenv("BASE_URL")
     username = os.getenv("CONFLUENCE_USERNAME")
     password = os.getenv("CONFLUENCE_PASSWORD")
     token = os.getenv("CONFLUENCE_TOKEN")
-    space_key = os.getenv("SPACE_KEY")
+    # space_key = os.getenv("SPACE_KEY")
 
     # Markdown file and image directory
-    base_dir = os.getenv("BASE_DIR")
-    image_dir = os.getenv("IMAGE_DIR")
+    if not base_dir:
+        base_dir = os.getenv("BASE_DIR")
+    if not image_dir:
+        image_dir = os.getenv("IMAGE_DIR")
 
     def find_markdown_files(base_dir):
         markdown_files = []
@@ -274,9 +290,9 @@ if __name__ == "__main__":
                     markdown_files.append(os.path.join(root, file))
         return markdown_files
 
-    if len(sys.argv) > 1:
+    if markdown_file:
         # Process the specific file provided as an argument
-        markdown_file = os.path.join(base_dir, sys.argv[1])
+        markdown_file = os.path.join(base_dir, markdown_file)
         markdown_files = [markdown_file]
     else:
         # Process all markdown files in the base_dir
@@ -291,17 +307,26 @@ if __name__ == "__main__":
         title = os.path.splitext(os.path.basename(markdown_file))[0]
 
         # Create the Confluence page and upload images
-        if token != '':
+        if token:
             auth = token
         else:
             auth = HTTPBasicAuth(username, password)
-        folder_name = os.path.dirname(markdown_file).replace(base_dir, "").strip("/")
-        if folder_name:
-            parent_id = get_page_id(base_url, auth, space_key, folder_name)
-            if not parent_id:
-                print(f"Creating parent page: {folder_name}")
-                create_confluence_page(base_url, auth, space_key, folder_name, "", image_dir, [], [])
-                parent_id = get_page_id(base_url, auth, space_key, folder_name)
+
+        if root_page_id:
+            parent_id = root_page_id
             create_confluence_page(base_url, auth, space_key, title, confluence_content, image_dir, images_to_upload, labels, parent_id)
-        else:
-            create_confluence_page(base_url, auth, space_key, title, confluence_content, image_dir, images_to_upload, labels)
+
+        # folder_name = os.path.dirname(markdown_file).replace(base_dir, "").strip("/")
+        # if folder_name:
+        #     parent_id = get_page_id(base_url, auth, space_key, folder_name)
+        #     if not parent_id:
+        #         print(f"Creating parent page: {folder_name}")
+        #         create_confluence_page(base_url, auth, space_key, folder_name, "", image_dir, [], [])
+        #         parent_id = get_page_id(base_url, auth, space_key, folder_name)
+        #     create_confluence_page(base_url, auth, space_key, title, confluence_content, image_dir, images_to_upload, labels, parent_id)
+        # else:
+        #     create_confluence_page(base_url, auth, space_key, title, confluence_content, image_dir, images_to_upload, labels)
+
+if __name__ == "__main__":
+    # python markdown-to-confluence.py --space_key="space_key" --root_page_id="page_id" --base_dir="your_base_dir" --image_dir="your_image_dir" --markdown_file="your_markdown_file"
+    fire.Fire(main)
